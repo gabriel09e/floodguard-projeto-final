@@ -1,0 +1,16 @@
+
+{
+  "development": {
+    "username": "avnadmin",
+    "password": "SUA_SENHA_DA_AIVEN",
+    "database": "defaultdb",
+    "host": "mysql-51076da-floodguard.g.aivencloud.com",
+    "port": 11311,
+    "dialect": "mysql",
+    "dialectOptions": {
+      "ssl": {
+        "rejectUnauthorized": true
+      }
+    }
+  }
+}

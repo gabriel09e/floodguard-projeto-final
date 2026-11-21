@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f8fc">
+  <title>FloodGuard | Monitoramento de Enchentes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <section class="login-screen" id="login-screen">
+    <form class="login-card" id="login-form">
+      <div class="login-brand"><span class="brand-logo"><i class="fa-solid fa-water"></i></span><span>Flood<span>Guard</span></span></div>
+      <div class="login-kicker">CENTRO DE MONITORAMENTO</div>
+      <h1>Bem-vindo de volta</h1>
+      <p>Entre para acompanhar os níveis de água e os alertas do FloodGuard.</p>
+      <label for="login-email">E-mail</label>
+      <input id="login-email" name="email" type="email" autocomplete="username" placeholder="voce@exemplo.com" required>
+      <label for="login-password">Senha</label>
+      <input id="login-password" name="senha" type="password" autocomplete="current-password" placeholder="Sua senha" required>
+      <p class="login-error" id="login-error" hidden></p>
+      <button class="login-submit" id="login-submit" type="submit">Entrar no painel <i class="fa-solid fa-arrow-right"></i></button>
+    </form>
+  </section>
+
+  <div class="app-shell" id="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-symbol"><i class="fa-solid fa-water"></i></div>
+        <div class="brand-name">Flood<span>Guard</span><small>Monitoramento de Enchentes</small></div>
+      </div>
+
+      <nav class="side-nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
+        <button class="nav-item" data-view="history"><i class="fa-solid fa-chart-column"></i><span>Histórico</span></button>
+        <button class="nav-item" data-view="analysis"><i class="fa-solid fa-arrow-trend-up"></i><span>Análises</span></button>
+        <button class="nav-item" data-view="alerts"><i class="fa-regular fa-bell"></i><span>Alertas</span><span class="nav-count" id="nav-alert-count">0</span></button>
+        <button class="nav-item" data-view="system"><i class="fa-solid fa-microchip"></i><span>Sistema</span></button>
+        <button class="nav-item" data-view="settings"><i class="fa-solid fa-gear"></i><span>Configurações</span></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-illustration"><div class="city city-1"></div><div class="city city-2"></div><div class="city city-3"></div><div class="house"></div><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div></div>
+        <div class="sidebar-version">v1.0.0</div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="top-title">
+          <span class="top-icon"><i class="fa-solid fa-border-all"></i></span>
+          <div><h1 id="page-title">Dashboard</h1><p id="page-subtitle">Visão geral do sistema em tempo real</p></div>
+        </div>
+        <div class="top-statuses">
+          <span class="status-chip online" id="api-chip"><i class="fa-solid fa-wifi"></i><b>Sistema Online</b></span>
+          <span class="status-chip" id="esp-chip"><i class="fa-solid fa-microchip"></i><b>ESP32</b><em>Conectado</em><span></span></span>
+          <span class="status-chip" id="mqtt-chip"><i class="fa-solid fa-cloud"></i><b>MQTT</b><em>Conectado</em><span></span></span>
+          <span class="status-chip" id="db-chip"><i class="fa-solid fa-database"></i><b>Banco (Aiven)</b><em>Conectado</em><span></span></span>
+          <div class="profile-wrap"><button class="profile-button" id="user-avatar" aria-label="Abrir menu do usuário">M</button><div class="profile-menu" id="profile-menu" hidden><div class="profile-menu-user"><strong id="profile-name">Usuário</strong><span id="profile-role">Operador</span></div><button class="profile-logout" id="profile-logout" type="button"><i class="fa-solid fa-right-from-bracket"></i> Sair</button></div></div>
+        </div>
+      </header>
+
+      <section class="view active" id="view-dashboard">
+        <section class="stations-overview panel">
+          <div class="panel-title">
+            <div>
+              <h2><i class="fa-solid fa-tower-broadcast"></i> Estações monitoradas</h2>
+              <small id="station-overview-subtitle">Visão geral de todos os dispositivos</small>
+            </div>
+            <span class="station-count" id="station-count">0 estações</span>
+          </div>
+          <div class="station-cards" id="station-cards"></div>
+        </section>
+
+        <div class="dashboard-device-selector">
+          <label for="dashboard-device-filter"><i class="fa-solid fa-location-crosshairs"></i> Estação em detalhe</label>
+          <select id="dashboard-device-filter" aria-label="Selecionar estação para o dashboard"></select>
+        </div>
+
+        <div class="hero-cards">
+          <article class="hero-card water-card"><div class="hero-icon"><i class="fa-solid fa-water"></i></div><div><span>Nível Atual</span><strong id="current-level">--</strong><small id="level-updated">Aguardando leitura</small></div><div class="card-wave"></div></article>
+          <article class="hero-card risk-card"><div class="hero-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div><span>Status de Risco</span><strong id="current-status">--</strong><small id="risk-description">Aguardando dados</small></div><div class="card-wave"></div></article>
+          <article class="hero-card trend-card"><div class="hero-icon"><i class="fa-solid fa-arrow-trend-up"></i></div><div><span>Variação do Nível</span><strong id="current-speed">--</strong><small id="trend-description">Sem tendência calculada</small></div><div class="card-wave"></div></article>
+          <article class="hero-card time-card"><div class="hero-icon"><i class="fa-regular fa-clock"></i></div><div><span>Tempo Estimado</span><strong id="critical-time">--</strong><small id="critical-description">até o nível crítico (≥ 15 cm)</small></div><div class="card-wave"></div></article>
+        </div>
+
+        <div class="dashboard-grid main-row">
+          <article class="panel chart-panel">
+            <div class="panel-title"><div><h2><i class="fa-solid fa-arrow-trend-up"></i> Histórico do Nível da Água</h2></div><div class="range-tabs"><button class="active" data-range="15">15 min</button><button data-range="60">1 h</button><button data-range="360">6 h</button><button data-range="1440">24 h</button><button data-range="10080">7 dias</button><button data-range="43200">30 dias</button><button data-range="0">Todo</button></div></div>
+            <div class="chart-box"><canvas id="level-chart"></canvas><div class="thresholds"><span class="evac">Evacuação (≥ 15 cm)</span><span class="alert">Alerta (10–15 cm)</span><span class="attention">Atenção (5–10 cm)</span></div><div class="empty-state" id="chart-empty" hidden>Aguardando leituras suficientes para montar o histórico.</div></div>
+          </article>
+
+          <article class="panel score-panel">
+            <div class="panel-title"><h2><i class="fa-solid fa-chart-column"></i> Flood Risk Score <small>ⓘ</small></h2></div>
+            <div class="score-layout"><div class="score-gauge"><div class="gauge-ring" id="score-ring"><div><strong id="risk-score">0</strong><span>/100</span></div></div><b id="risk-score-label">Baixo Risco</b></div><div class="risk-key"><div><i class="red"></i><span>≥ 15 cm</span><b>Evacuação</b></div><div><i class="orange"></i><span>10–15 cm</span><b>Alerta</b></div><div><i class="blue"></i><span>5–10 cm</span><b>Atenção</b></div><div><i class="green"></i><span>&lt; 5 cm</span><b>Seguro</b></div></div></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid three-row">
+          <article class="panel mini-panel"><div class="mini-head"><h2><i class="fa-solid fa-arrow-trend-up"></i> Previsão do Nível <small>ⓘ</small></h2></div><div class="prediction"><div><strong id="prediction-level">--</strong><span id="prediction-time">sem tendência</span></div><div class="sparkline"><canvas id="prediction-chart"></canvas></div></div></article>
+          <article class="panel mini-panel"><div class="mini-head"><h2><i class="fa-regular fa-clock"></i> Tempo em Cada Nível <small>(24 h)</small></h2></div><div class="time-bar"><span class="safe" id="bar-safe"></span><span class="att" id="bar-att"></span><span class="ale" id="bar-ale"></span><span class="eva" id="bar-eva"></span></div><div class="time-legend"><span><i class="green"></i><b id="pct-safe">--</b> Seguro</span><span><i class="blue"></i><b id="pct-att">--</b> Atenção</span><span><i class="orange"></i><b id="pct-ale">--</b> Alerta</span><span><i class="red"></i><b id="pct-eva">--</b> Evacuação</span></div></article>
+          <article class="panel mini-panel"><div class="mini-head"><h2><i class="fa-solid fa-gauge-high"></i> Velocidade de Subida</h2></div><div class="speed-big" id="speed-big">--</div><span class="speed-badge" id="speed-badge">Aguardando dados</span><div class="speed-spark"><canvas id="speed-chart"></canvas></div></article>
+        </div>
+
+        <div class="dashboard-grid bottom-row">
+          <article class="panel events-panel"><div class="panel-title"><h2><i class="fa-regular fa-bell"></i> Últimos Eventos</h2><button class="link-button" data-view-target="alerts">Ver todos <i class="fa-solid fa-arrow-right"></i></button></div><div id="events-list" class="events-list"></div></article>
+          <article class="panel readings-panel"><div class="panel-title"><h2><i class="fa-solid fa-database"></i> Leituras Recentes</h2></div><div class="reading-table-wrap"><table class="reading-table"><thead><tr><th>Horário</th><th>Nível (cm)</th><th>Status</th></tr></thead><tbody id="recent-readings"></tbody></table></div></article>
+          <article class="panel map-panel"><div class="panel-title"><h2><i class="fa-solid fa-location-dot"></i> Localização do Monitoramento</h2></div><div id="risk-map"></div><div class="map-label"><i class="fa-solid fa-crosshairs"></i> Referência visual • SENAI Lauro de Freitas/BA</div></article>
+        </div>
+      </section>
+
+      <section class="view" id="view-history"><div class="section-head"><div><span>MONITORAMENTO</span><h2>Histórico de medições</h2><p>Consulte a evolução do nível da água e todas as leituras recebidas pela API.</p></div><button class="outline-button" id="history-refresh"><i class="fa-solid fa-rotate"></i> Atualizar</button></div><div class="history-full panel"><div class="history-filters"><label>Dispositivo<select id="history-device-filter"><option value="all">Todos os dispositivos</option></select></label><div class="range-tabs large"><button class="active" data-range="15">15 min</button><button data-range="60">1 h</button><button data-range="360">6 h</button><button data-range="1440">24 h</button><button data-range="10080">7 dias</button><button data-range="43200">30 dias</button><button data-range="0">Todo</button></div></div><div class="full-chart"><canvas id="history-chart"></canvas></div></div><div class="stats-grid"><div class="stat-card"><span>Máximo</span><strong id="history-max">--</strong></div><div class="stat-card"><span>Mínimo</span><strong id="history-min">--</strong></div><div class="stat-card"><span>Média</span><strong id="history-avg">--</strong></div><div class="stat-card"><span>Leituras</span><strong id="history-count">--</strong></div></div><div class="panel history-table-panel"><div class="panel-title"><h2><i class="fa-solid fa-table-list"></i> Leituras completas</h2><span class="history-total" id="history-total">--</span></div><div class="reading-table-wrap history-scroll"><table class="reading-table"><thead><tr><th>Data/Hora</th><th>Dispositivo</th><th>Distância</th><th>Nível</th><th>Tendência</th><th>Status</th></tr></thead><tbody id="history-readings"></tbody></table></div></div></section>
+
+      <section class="view" id="view-analysis"><div class="section-head"><div><span>INTELIGÊNCIA DOS DADOS</span><h2>Análises</h2><p>Indicadores calculados a partir das leituras reais recebidas.</p></div></div><div class="analysis-grid"><div class="analysis-card blue"><i class="fa-solid fa-bullseye"></i><span>Flood Risk Score</span><strong id="analysis-score">--</strong><small id="analysis-score-text">--</small></div><div class="analysis-card cyan"><i class="fa-solid fa-gauge-high"></i><span>Velocidade</span><strong id="analysis-speed">--</strong><small id="analysis-speed-text">--</small></div><div class="analysis-card purple"><i class="fa-solid fa-crystal-ball"></i><span>Previsão</span><strong id="analysis-prediction">--</strong><small id="analysis-prediction-time">--</small></div><div class="analysis-card orange"><i class="fa-solid fa-bolt"></i><span>Subida acelerada</span><strong id="analysis-accelerated">--</strong><small>com base na tendência</small></div></div><div class="panel analysis-details"><h3>Interpretação</h3><div id="analysis-explanation">Aguardando dados do sensor.</div></div></section>
+
+      <section class="view" id="view-alerts"><div class="section-head"><div><span>CENTRAL DE OCORRÊNCIAS</span><h2>Alertas</h2><p>Eventos de risco identificados nas leituras do FloodGuard.</p></div></div><div class="alert-banner" id="alert-banner"><i class="fa-solid fa-shield-heart"></i><div><strong>Nenhum alerta crítico no momento</strong><span>O sistema está acompanhando as leituras normalmente.</span></div></div><div class="panel event-history"><h3>Linha do tempo</h3><div id="alert-timeline"></div></div></section>
+
+      <section class="view" id="view-system"><div class="section-head"><div><span>DIAGNÓSTICO</span><h2>Saúde do Sistema</h2><p>Visão técnica dos componentes do FloodGuard.</p></div></div><div class="system-grid"><div class="system-card"><i class="fa-solid fa-microchip"></i><span>ESP32</span><strong id="system-esp">Conectado</strong><small>Dispositivo de campo</small></div><div class="system-card"><i class="fa-solid fa-wave-square"></i><span>HC-SR04</span><strong>Normal</strong><small>Sensor ultrassônico</small></div><div class="system-card"><i class="fa-solid fa-cloud"></i><span>MQTT</span><strong id="system-mqtt">Conectado</strong><small>Broker HiveMQ</small></div><div class="system-card"><i class="fa-solid fa-database"></i><span>Aiven / MySQL</span><strong id="system-db">Conectado</strong><small>Persistência de dados</small></div></div><div class="panel system-detail"><div><span>Última atualização da API</span><strong id="system-last-update">--</strong></div><div><span>Leituras carregadas</span><strong id="system-reading-count">--</strong></div><div><span>Dispositivos cadastrados</span><strong id="system-device-count">--</strong></div><div><span>Leituras em risco</span><strong id="system-risk-count">--</strong></div></div></section>
+
+      <section class="view" id="view-settings"><div class="section-head"><div><span>CONFIGURAÇÃO</span><h2>Parâmetros do sistema</h2><p>Referência visual dos limites e gerenciamento dos dispositivos.</p></div></div><div class="settings-grid"><div class="panel setting-panel"><h3>Classificação de risco</h3><div class="setting-row"><span><i class="green"></i>Seguro</span><b>&lt; 5 cm</b></div><div class="setting-row"><span><i class="blue"></i>Atenção</span><b>5–10 cm</b></div><div class="setting-row"><span><i class="orange"></i>Alerta</span><b>10–15 cm</b></div><div class="setting-row"><span><i class="red"></i>Evacuação</span><b>≥ 15 cm</b></div></div><div class="panel setting-panel"><h3>Arquitetura</h3><div class="architecture"><span>ESP32</span><i class="fa-solid fa-arrow-right"></i><span>MQTT</span><i class="fa-solid fa-arrow-right"></i><span>Node.js</span><i class="fa-solid fa-arrow-right"></i><span>Aiven</span></div><p>O dashboard consulta a API local e apresenta os dados persistidos no banco.</p></div></div><div class="panel device-management" id="device-management"><div class="panel-title"><div><h2><i class="fa-solid fa-microchip"></i> Gerenciamento de dispositivos</h2><p class="panel-note">Disponível somente para administradores.</p></div><button class="primary-button" id="device-add"><i class="fa-solid fa-plus"></i> Cadastrar dispositivo</button></div><div id="device-form-wrap" hidden><form class="device-form" id="device-form"><input type="hidden" id="device-form-id"><label>Device ID<input id="device-device-id" required placeholder="ESP32-002"></label><label>Nome<input id="device-name" required placeholder="Estação Rio Secundário"></label><label>Localização<input id="device-location" required placeholder="Rio Secundário"></label><label>Latitude<input id="device-latitude" type="number" step="any" placeholder="-12.8901082"></label><label>Longitude<input id="device-longitude" type="number" step="any" placeholder="-38.3128897"></label><label class="check-label"><input id="device-active" type="checkbox" checked> Dispositivo ativo</label><div class="form-actions"><button type="button" class="outline-button" id="device-cancel">Cancelar</button><button type="submit" class="primary-button">Salvar dispositivo</button></div></form></div><div id="device-list" class="device-list"></div></div><div class="panel simulation-panel" id="simulation-panel" hidden><div class="panel-title"><div><h2><i class="fa-solid fa-flask"></i> Simulador de enchente</h2><p class="panel-note">Ferramenta de demonstração exclusiva para administradores. A simulação grava uma leitura no banco como qualquer outra leitura recebida.</p></div></div><form class="simulation-form" id="simulation-form"><label>Dispositivo<select id="simulation-device" required></select></label><label>Nível da água (cm)<input id="simulation-height" type="number" min="0" step="0.1" value="4"></label><label>Tendência<select id="simulation-trend"><option value="subindo">Subindo</option><option value="estavel">Estável</option><option value="descendo">Descendo</option></select></label><div class="simulation-quick"><span>Atalhos:</span><button type="button" data-sim-height="4">4 cm</button><button type="button" data-sim-height="7">7 cm</button><button type="button" data-sim-height="12">12 cm</button><button type="button" data-sim-height="16">16 cm</button></div><button type="submit" class="primary-button"><i class="fa-solid fa-play"></i> Simular leitura</button></form></div></section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
